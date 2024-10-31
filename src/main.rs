@@ -32,6 +32,16 @@ fn parse_num(num: &str) -> Result<u128, ParseIntError> {
     Ok(if pos { num } else { 0u128.wrapping_sub(num) })
 }
 
+fn signextend(n: u128, nbits: usize) -> u128 {
+    let mask = !0u128 >> (128 - nbits);
+    let neg = (n >> (nbits - 1)) & 0b1 == 1;
+    if neg {
+        n | !mask
+    } else {
+        n & mask
+    }
+}
+
 fn twoscomp(n: u128) -> u128 {
     let onescomp = !n;
     onescomp.wrapping_add(1)
@@ -62,7 +72,13 @@ fn main() {
         eprintln!("twoscomp: failed to parse number {numstr}: {e:?}");
         std::process::exit(1);
     });
-    let n2c = twoscomp(num);
+    let senum = signextend(num, nbits);
+    if num != senum && num >> nbits != 0 {
+        eprintln!("twoscomp: number {numstr} out of range for width {nbits} bits");
+        std::process::exit(1);
+    }
+    let num = senum;
+    let n2c = signextend(twoscomp(num), nbits);
 
     // Signed, for printing as decimal.
     let snum = num as i128;
@@ -71,6 +87,6 @@ fn main() {
     let mask = !0u128 >> (128 - nbits);
     let num = num & mask;
     let n2c = n2c & mask;
-    println!("number:  0x{num:0>width$x} ({num:0>nbits$b})  [{snum}]");
+    println!("number:  0x{num:0>width$x} ({num:0>nbits$b})  [{snum} from {numstr}]");
     println!("2s cmpl: 0x{n2c:0>width$x} ({n2c:0>nbits$b})  [{sn2c}]");
 }
