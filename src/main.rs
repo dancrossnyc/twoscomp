@@ -20,6 +20,8 @@ use std::num::ParseIntError;
 
 fn parse_num(num: &str) -> Result<u128, ParseIntError> {
     let pos = !num.starts_with('-');
+    let mut num = num.to_owned();
+    num.retain(|c| c != '_');
     let (radix, numstr) = match &num[if pos { 0 } else { 1 }..] {
         "0" => (10, "0"),
         s if s.starts_with("0x") || s.starts_with("0X") => (16, &s[2..]),
@@ -32,7 +34,7 @@ fn parse_num(num: &str) -> Result<u128, ParseIntError> {
     Ok(if pos { num } else { 0u128.wrapping_sub(num) })
 }
 
-fn signextend(n: u128, nbits: usize) -> u128 {
+fn sign_extend(n: u128, nbits: usize) -> u128 {
     let mask = !0u128 >> (128 - nbits);
     let neg = (n >> (nbits - 1)) & 0b1 == 1;
     if neg {
@@ -42,7 +44,7 @@ fn signextend(n: u128, nbits: usize) -> u128 {
     }
 }
 
-fn twoscomp(n: u128) -> u128 {
+fn twos_comp(n: u128) -> u128 {
     let onescomp = !n;
     onescomp.wrapping_add(1)
 }
@@ -72,13 +74,13 @@ fn main() {
         eprintln!("twoscomp: failed to parse number {numstr}: {e:?}");
         std::process::exit(1);
     });
-    let senum = signextend(num, nbits);
+    let senum = sign_extend(num, nbits);
     if num != senum && num >> nbits != 0 {
         eprintln!("twoscomp: number {numstr} out of range for width {nbits} bits");
         std::process::exit(1);
     }
     let num = senum;
-    let n2c = signextend(twoscomp(num), nbits);
+    let n2c = sign_extend(twos_comp(num), nbits);
 
     // Signed, for printing as decimal.
     let snum = num as i128;
